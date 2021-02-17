@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Polly;
 using Polly.Extensions.Http;
+using WebAPI.Controllers;
 
 
 namespace WebAPI
@@ -36,18 +37,23 @@ namespace WebAPI
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPI", Version = "v1" });
             });
-            services.AddHttpClient<IGitHubService, GitHubService>()
+            services.AddHttpContextAccessor();
+            services.AddTransient<HttpClientAuthorizationDelegatingHandler>();
+            
+            services.AddHttpClient<ISimulateHttpRequestTimeout, Simulator>()
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5))  //Sample. Default lifetime is 2 minutes
                 .AddHttpMessageHandler<HttpClientAuthorizationDelegatingHandler>()
-                .AddPolicyHandler(GetRetryPolicy())
+                //.AddPolicyHandler(GetRetryPolicy())
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
+
+            services.AddSingleton<CircuitBreakerSimulationHelper>();
         }
 
         private IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
         {
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
-                .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+                .CircuitBreakerAsync(handledEventsAllowedBeforeBreaking: 1, TimeSpan.FromSeconds(30));
         }
 
         private IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
@@ -77,42 +83,6 @@ namespace WebAPI
             {
                 endpoints.MapControllers();
             });
-        }
-    }
-
-
-    public interface IGitHubService
-    {
-        Task<IEnumerable<GitHubIssue>> GetAspNetDocsIssues();
-    }
-
-    public class GitHubService : IGitHubService
-    {
-        public HttpClient Client { get; }
-
-        public GitHubService(HttpClient client)
-        {
-            client.BaseAddress = new Uri("https://api.github.com/");
-            // GitHub API versioning
-            client.DefaultRequestHeaders.Add("Accept",
-                "application/vnd.github.v3+json");
-            // GitHub requires a user-agent
-            client.DefaultRequestHeaders.Add("User-Agent",
-                "HttpClientFactory-Sample");
-
-            Client = client;
-        }
-
-        public async Task<IEnumerable<GitHubIssue>> GetAspNetDocsIssues()
-        {
-            var response = await Client.GetAsync(
-                "/repos/aspnet/AspNetCore.Docs/issues?state=open&sort=created&direction=desc");
-
-            response.EnsureSuccessStatusCode();
-
-            using var responseStream = await response.Content.ReadAsStreamAsync();
-            return await JsonSerializer.DeserializeAsync
-                <IEnumerable<GitHubIssue>>(responseStream);
         }
     }
 }

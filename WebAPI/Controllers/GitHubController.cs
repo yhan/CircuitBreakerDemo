@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace WebAPI.Controllers
@@ -11,33 +9,37 @@ namespace WebAPI.Controllers
     [Route("[controller]")]
     public class GitHubController : ControllerBase
     {
-        private static readonly string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
-
         private readonly ILogger<GitHubController> _logger;
-        private readonly IGitHubService _github;
+        private readonly ISimulateHttpRequestTimeout _simulator;
 
-        public GitHubController(ILogger<GitHubController> logger, IGitHubService github)
+        public GitHubController(ILogger<GitHubController> logger,ISimulateHttpRequestTimeout simulator)
         {
             _logger = logger;
-            _github = github;
+            _simulator = simulator;
         }
 
-        [HttpGet]
-        public async Task<IEnumerable<GitHubIssue>> Get()
+        public class OutgoingResponse
         {
-            return await _github.GetAspNetDocsIssues();
+            public string Message { get; }
+            public HttpStatusCode HttpStatusCode { get; }
 
-            //var rng = new Random();
-            //return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            //{
-            //    Date = DateTime.Now.AddDays(index),
-            //    TemperatureC = rng.Next(-20, 55),
-            //    Summary = Summaries[rng.Next(Summaries.Length)]
-            //})
-            //.ToArray();
+            public OutgoingResponse(string message, HttpStatusCode httpStatusCode)
+            {
+                Message = message;
+                HttpStatusCode = httpStatusCode;
+            }
+        }
+
+        [HttpGet("simulator")]
+        public async Task<OutgoingResponse> GetSimulation()
+        {
+            var simulation = await _simulator.Get();
+            if (simulation.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                return new OutgoingResponse("Can't serve your request now", HttpStatusCode.InternalServerError);
+            }
+            
+            return new OutgoingResponse(await simulation.Content.ReadAsStringAsync(), simulation.StatusCode );
         }
     }
 }
