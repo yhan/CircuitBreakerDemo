@@ -7,12 +7,12 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class GitHubController : ControllerBase
+    public class ClientFacingController : ControllerBase
     {
-        private readonly ILogger<GitHubController> _logger;
+        private readonly ILogger<ClientFacingController> _logger;
         private readonly ISimulateHttpRequestTimeout _simulator;
 
-        public GitHubController(ILogger<GitHubController> logger,ISimulateHttpRequestTimeout simulator)
+        public ClientFacingController(ILogger<ClientFacingController> logger,ISimulateHttpRequestTimeout simulator)
         {
             _logger = logger;
             _simulator = simulator;

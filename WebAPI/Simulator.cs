@@ -1,17 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace WebAPI
 {
-    public interface ISimulateHttpRequestTimeout
-    {
-        Task<HttpResponseMessage> Get();
-    }
-
     public class Simulator : ISimulateHttpRequestTimeout
     {
         private readonly ILogger<Simulator> _logger;
